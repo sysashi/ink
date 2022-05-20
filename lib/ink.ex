@@ -132,7 +132,6 @@ defmodule Ink do
   defp process_metadata(metadata, config) do
     metadata
     |> filter_metadata(config)
-    |> rename_metadata_fields
     |> Enum.into(%{})
     |> Map.delete(:time)
   end
@@ -141,14 +140,6 @@ defmodule Ink do
 
   defp filter_metadata(metadata, config) do
     metadata |> Enum.filter(fn {key, _} -> key in config.metadata end)
-  end
-
-  defp rename_metadata_fields(metadata) do
-    metadata
-    |> Enum.map(fn
-      {:pid, value} -> {:erlang_pid, value}
-      other -> other
-    end)
   end
 
   defp log_json({:ok, json}, config) do
@@ -166,27 +157,11 @@ defmodule Ink do
 
   defp log_to_device(msg, io_device), do: IO.puts(io_device, msg)
 
-  defp base_map(message, timestamp, level, %{exclude_hostname: true} = config)
-       when is_binary(message) do
-    %{
-      name: name(),
-      pid: System.pid() |> String.to_integer(),
-      msg: message,
-      time: formatted_timestamp(timestamp),
-      level: level(level, config.status_mapping),
-      v: 0
-    }
-  end
-
   defp base_map(message, timestamp, level, config) when is_binary(message) do
     %{
-      name: name(),
-      pid: System.pid() |> String.to_integer(),
-      hostname: hostname(),
-      msg: message,
+      message: message,
       time: formatted_timestamp(timestamp),
       level: level(level, config.status_mapping),
-      v: 0
     }
   end
 
@@ -227,16 +202,17 @@ defmodule Ink do
   defp default_options do
     %{
       level: :debug,
-      status_mapping: :bunyan,
+      status_mapping: :default,
       filtered_strings: [],
       filtered_uri_credentials: [],
       secret_strings: [],
       io_device: :stdio,
       metadata: nil,
-      exclude_hostname: false,
       log_encoding_error: true
     }
   end
+
+  defp level(level, :default), do: level
 
   # https://github.com/trentm/node-bunyan#levels
   defp level(level, :bunyan) do
@@ -256,15 +232,5 @@ defmodule Ink do
       :warn -> 4
       :error -> 3
     end
-  end
-
-  defp hostname do
-    with {:ok, hostname} <- :inet.gethostname(), do: List.to_string(hostname)
-  end
-
-  defp name do
-    :logger
-    |> Application.get_env(Ink)
-    |> Keyword.fetch!(:name)
   end
 end
