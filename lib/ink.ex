@@ -120,6 +120,8 @@ defmodule Ink do
   end
 
   defp log_message(message, level, timestamp, metadata, config) do
+    level = to_new_log_level(level)
+
     if Logger.compare_levels(level, config.level) != :lt do
       message
       |> base_map(timestamp, level, config)
@@ -161,7 +163,7 @@ defmodule Ink do
     %{
       message: message,
       time: formatted_timestamp(timestamp),
-      level: level(level, config.status_mapping),
+      level: level(level, config.status_mapping)
     }
   end
 
@@ -233,4 +235,7 @@ defmodule Ink do
       :error -> 3
     end
   end
+
+  defp to_new_log_level(:warn), do: :warning
+  defp to_new_log_level(level), do: level
 end
